@@ -1,0 +1,2 @@
+bin_PROGRAMS=lyricsmaker
+lyricsmaker_SOURCES=main.cpp

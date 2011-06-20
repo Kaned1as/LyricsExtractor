@@ -1,1 +1,7 @@
 AM_CONFIG_HEADER(config.h)
+
+AC_INIT([main.cpp])
+AM_INIT_AUTOMAKE([lyricsmaker], [0.1])
+AC_PROG_CXX
+
+AC_OUTPUT([Makefile])
