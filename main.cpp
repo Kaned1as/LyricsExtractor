@@ -1,4 +1,5 @@
 #include "config.h"
+#include <sys/stat.h>
 #include <iostream>
 #include <mysql.h>
 #include <id3/tag.h>
@@ -31,8 +32,25 @@ MYSQL *DB_connect()
     return conn;
 }
 
-int main()
+bool fexist(const char *filename)
 {
+    struct stat buffer;
+    if (stat(filename, &buffer) == 0)
+        return true;
+    return false;
+}
+
+int main(int argc, char *argv[])
+{
+    bool overwrite = false;
+ //   bool with_amarok = false; //for future use
+
+    for (int i = 0; i < argc; i++)
+    {
+        if((strcmp(argv[i], "-O") == 0) || (strcmp(argv[i], "--overwrite") == 0))
+            overwrite = true;
+    }
+
     // connect to Amarok MySQL DB
     MYSQL *connection = DB_connect();
     MYSQL_RES *result;
@@ -62,11 +80,9 @@ int main()
 
         file_path = file_path.substr(1);
         file_name = file_path.substr(file_path.find_last_of("/")+1);
-        ifstream curr_file(file_path.c_str());
         // Getting linked file...
-        if(curr_file)
+        if(fexist(file_path.c_str()))
         {
-            curr_file.close();
             // Let's analyze it's ID3 Tag
             ID3_Tag ScanTag(file_path.c_str());
             // Ensure that the one doesn't have lyrics already...
@@ -91,7 +107,18 @@ int main()
                 cout << "Successful update" << endl;
             }
             else
-                cout << file_name << " already has lyrics" << endl; // so cute...
+                if (overwrite) // Delete existing lyrics and set ours...
+                {
+                    cout << "overwriting tag in file " << file_name << " - ";
+
+                    ID3_Frame *lyrics_frame = ScanTag.Find(ID3FID_UNSYNCEDLYRICS);
+                    lyrics_frame->GetField(ID3FN_TEXT)->Set(lyrics_content.c_str());
+
+                    ScanTag.Update();
+                    cout << "Successful update" << endl;
+                }
+                else
+                    cout << file_name << " already has lyrics" << endl; // so cute...
         }
         else
             cout << "file " << file_name << " doesn't exist" << endl;
