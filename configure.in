@@ -1,7 +1,7 @@
 AM_CONFIG_HEADER(config.h)
 
 AC_INIT([main.cpp])
-AM_INIT_AUTOMAKE([lyricsmaker], [0.1])
+AM_INIT_AUTOMAKE([lyricsmaker], [0.1.2])
 
 AC_LANG_CPLUSPLUS
 AC_PROG_CXX
@@ -11,6 +11,6 @@ AC_CHECK_LIB(id3, ID3Tag_Link, AC_CHECK_LIB(z, gzread, ,AC_MSG_ERROR(cannot find
 AC_CHECK_HEADER([id3/tag.h], , AC_MSG_ERROR(cannot find id3/tag.h!))
 AC_CHECK_HEADER([mysql/mysql.h], , AC_MSG_ERROR(cannot find mysql.h!))
 
-CXXFLAGS="-I/usr/include/mysql  -DBIG_JOINS=1  -fno-strict-aliasing   -DUNIV_LINUX"
+CXXFLAGS="`mysql_config --cflags`"
 LDFLAGS="`mysql_config --libs` -lid3 -lz"
 AC_OUTPUT([Makefile])
