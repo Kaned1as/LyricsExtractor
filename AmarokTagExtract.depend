@@ -1,8 +1,14 @@
 # depslib dependency file v1.0
-1308448749 source:/home/adonai/dev/Learning/AmarokTagExtract/main.cpp
+1308806714 source:/home/adonai/dev/Learning/AmarokTagExtract/main.cpp
+	"config.h"
+	<sys/stat.h>
+	<stdio.h>
+	<string.h>
 	<iostream>
 	<mysql.h>
-	<id3/tag.h>
+	<mpegfile.h>
+	<id3v2tag.h>
+	<unsynchronizedlyricsframe.h>
 
 1307995221 /usr/include/mysql/mysql.h
 	<standards.h>
@@ -28,4 +34,94 @@
 	"my_alloc.h"
 
 1307995221 /usr/include/mysql/my_alloc.h
+
+1308796306 /home/adonai/dev/Learning/AmarokTagExtract/config.h
+
+1299849338 /usr/include/taglib/mpegfile.h
+	"taglib_export.h"
+	"tfile.h"
+	"mpegproperties.h"
+
+1299849338 /usr/include/taglib/taglib_export.h
+	"taglib_config.h"
+
+1302366856 /usr/include/taglib/taglib_config.h
+
+1299849338 /usr/include/taglib/tfile.h
+	"taglib_export.h"
+	"taglib.h"
+	"tbytevector.h"
+
+1299849338 /usr/include/taglib/taglib.h
+	<string>
+
+1299849338 /usr/include/taglib/tbytevector.h
+	"taglib.h"
+	"taglib_export.h"
+	<vector>
+	<ostream>
+
+1299849338 /usr/include/taglib/mpegproperties.h
+	"taglib_export.h"
+	"audioproperties.h"
+	"mpegheader.h"
+
+1299849338 /usr/include/taglib/audioproperties.h
+	"taglib_export.h"
+
+1299849338 /usr/include/taglib/mpegheader.h
+	"taglib_export.h"
+
+1299849338 /usr/include/taglib/id3v2tag.h
+	"tag.h"
+	"tbytevector.h"
+	"tstring.h"
+	"tlist.h"
+	"tmap.h"
+	"taglib_export.h"
+	"id3v2framefactory.h"
+
+1299849338 /usr/include/taglib/tag.h
+	"taglib_export.h"
+	"tstring.h"
+
+1302366855 /usr/include/taglib/tstring.h
+	"taglib_export.h"
+	"taglib.h"
+	"tbytevector.h"
+	<string>
+	<ostream>
+
+1299849338 /usr/include/taglib/tlist.h
+	"taglib.h"
+	<list>
+	"tlist.tcc"
+
+1299849338 /usr/include/taglib/tlist.tcc
+	<algorithm>
+
+1299849338 /usr/include/taglib/tmap.h
+	<map>
+	"taglib.h"
+	"tmap.tcc"
+
+1299849338 /usr/include/taglib/tmap.tcc
+
+1299849338 /usr/include/taglib/id3v2framefactory.h
+	"taglib_export.h"
+	"tbytevector.h"
+	"id3v2frame.h"
+	"id3v2header.h"
+
+1299849338 /usr/include/taglib/id3v2frame.h
+	"tstring.h"
+	"tbytevector.h"
+	"taglib_export.h"
+
+1299849338 /usr/include/taglib/id3v2header.h
+	"tbytevector.h"
+	"taglib_export.h"
+
+1299849338 /usr/include/taglib/unsynchronizedlyricsframe.h
+	"id3v2frame.h"
 

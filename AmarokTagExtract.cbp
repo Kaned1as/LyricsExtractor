@@ -31,11 +31,11 @@
 		<Compiler>
 			<Add option="-Wall" />
 			<Add option="`mysql_config --cflags`" />
+			<Add option="`pkg-config taglib --cflags`" />
 		</Compiler>
 		<Linker>
 			<Add option="`mysql_config --libs`" />
-			<Add option="-lid3" />
-			<Add option="-lz" />
+			<Add option="`pkg-config taglib --libs`" />
 		</Linker>
 		<Unit filename="main.cpp" />
 		<Extensions>

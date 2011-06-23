@@ -7,10 +7,9 @@ AC_LANG_CPLUSPLUS
 AC_PROG_CXX
 
 AC_CHECK_LIB(mysqlclient, mysql_init, , AC_MSG_ERROR(cannot find mysqlclient library!))
-AC_CHECK_LIB(id3, ID3Tag_Link, AC_CHECK_LIB(z, gzread, ,AC_MSG_ERROR(cannot find zlib library!)), AC_MSG_ERROR(cannot find id3 library!))
-AC_CHECK_HEADER([id3/tag.h], , AC_MSG_ERROR(cannot find id3/tag.h!))
+PKG_CHECK_MODULES(TAGLIB, taglib >= 1.7, , AC_MSG_ERROR(cannot find taglib!))
 AC_CHECK_HEADER([mysql/mysql.h], , AC_MSG_ERROR(cannot find mysql.h!))
 
-CXXFLAGS="`mysql_config --cflags`"
-LDFLAGS="`mysql_config --libs` -lid3 -lz"
+CXXFLAGS="`mysql_config --cflags` `pkg-config taglib --cflags`"
+LDFLAGS="`mysql_config --libs` `pkg-config taglib --libs`"
 AC_OUTPUT([Makefile])

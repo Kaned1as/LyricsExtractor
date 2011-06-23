@@ -1,8 +1,15 @@
 #include "config.h"
+
 #include <sys/stat.h>
+#include <stdio.h>
+#include <string.h>
 #include <iostream>
+
 #include <mysql.h>
-#include <id3/tag.h>
+
+#include <mpegfile.h>
+#include <id3v2tag.h>
+#include <unsynchronizedlyricsframe.h>
 
 using namespace std;
 MYSQL *DB_connect()
@@ -35,7 +42,7 @@ MYSQL *DB_connect()
 bool fexist(const char *filename)
 {
     struct stat buffer;
-    if (stat(filename, &buffer) == 0)
+    if (stat(filename, &buffer) == 0 && (buffer.st_mode & (S_IFREG | S_IFLNK)))
         return true;
     return false;
 }
@@ -84,37 +91,34 @@ int main(int argc, char *argv[])
         if(fexist(file_path.c_str()))
         {
             // Let's analyze it's ID3 Tag
-            ID3_Tag ScanTag(file_path.c_str());
+            TagLib::MPEG::File curr_file(file_path.c_str());
+            if(!curr_file.ID3v2Tag())
+                continue;
+
+            TagLib::ID3v2::FrameList framelist = curr_file.ID3v2Tag()->frameListMap()["USLT"];
             // Ensure that the one doesn't have lyrics already...
-            if (!ScanTag.Find(ID3FID_UNSYNCEDLYRICS))
+            if (framelist.isEmpty())
             {
                 cout << "processing file " << file_name << " - ";
-                ID3_Frame *lyrics_frame = new ID3_Frame(ID3FID_UNSYNCEDLYRICS);
-
-                // ... and is ready for insertion
-                if(!ScanTag.AttachFrame(lyrics_frame))
-                {
-                    cout << "Error: can't attach lyrics frame to tag" << endl;
-                    delete lyrics_frame;
-                    continue;
-                }
+                TagLib::ID3v2::UnsynchronizedLyricsFrame *lyrics_frame = new TagLib::ID3v2::UnsynchronizedLyricsFrame();
 
                 // KEY LINE!!!
                 // Making file's ID3 Tag use lyrics from the Amarok DB
-                lyrics_frame->GetField(ID3FN_TEXT)->Set(lyrics_content.c_str());
+                lyrics_frame->setTextEncoding(TagLib::String::UTF8);
+                lyrics_frame->setText(lyrics_content);
+                curr_file.ID3v2Tag()->addFrame(lyrics_frame);
                 // Write it in!
-                ScanTag.Update();
+                curr_file.save();
                 cout << "Successful update" << endl;
             }
             else
                 if (overwrite) // Delete existing lyrics and set ours...
                 {
                     cout << "overwriting tag in file " << file_name << " - ";
-
-                    ID3_Frame *lyrics_frame = ScanTag.Find(ID3FID_UNSYNCEDLYRICS);
-                    lyrics_frame->GetField(ID3FN_TEXT)->Set(lyrics_content.c_str());
-
-                    ScanTag.Update();
+                    TagLib::ID3v2::UnsynchronizedLyricsFrame *lyrics_frame = (TagLib::ID3v2::UnsynchronizedLyricsFrame*)framelist.front();
+                    lyrics_frame->setTextEncoding(TagLib::String::UTF8);
+                    lyrics_frame->setText(lyrics_content);
+                    curr_file.save();
                     cout << "Successful update" << endl;
                 }
                 else
