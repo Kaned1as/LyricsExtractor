@@ -9,6 +9,7 @@
 
 #include <mpegfile.h>
 #include <id3v2tag.h>
+#include <tstring.h>
 #include <unsynchronizedlyricsframe.h>
 
 using namespace std;
@@ -62,7 +63,8 @@ int main(int argc, char *argv[])
     MYSQL *connection = DB_connect();
     MYSQL_RES *result;
     MYSQL_ROW row;
-    string file_path, file_name, lyrics_content;
+    string file_path, file_name;
+    TagLib::String lyrics_content;
     if (connection)
         cout << "Connection succesful" << endl;
     else
@@ -83,7 +85,7 @@ int main(int argc, char *argv[])
     {
         // Some useful vars
         file_path = row[0];
-        lyrics_content= row[1];
+        lyrics_content= TagLib::String(row[1], TagLib::String::UTF8);
 
         file_path = file_path.substr(1);
         file_name = file_path.substr(file_path.find_last_of("/")+1);
@@ -116,6 +118,7 @@ int main(int argc, char *argv[])
                 {
                     cout << "overwriting tag in file " << file_name << " - ";
                     TagLib::ID3v2::UnsynchronizedLyricsFrame *lyrics_frame = (TagLib::ID3v2::UnsynchronizedLyricsFrame*)framelist.front();
+
                     lyrics_frame->setTextEncoding(TagLib::String::UTF8);
                     lyrics_frame->setText(lyrics_content);
                     curr_file.save();
