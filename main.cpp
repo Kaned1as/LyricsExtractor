@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <sys/stat.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <string.h>
 #include <iostream>
@@ -14,6 +15,7 @@
 #include <unsynchronizedlyricsframe.h>
 
 using namespace std;
+typedef multimap<string, string> StringList;
 MYSQL *DB_connect()
 {
     MYSQL *conn = mysql_init(NULL);
@@ -49,6 +51,54 @@ bool fexist(const char *filename)
     return false;
 }
 
+void fill_file_array(vector<string> *filelist, string dirname)
+{
+    DIR *searchdir = opendir(dirname.c_str());
+    dirent *item;
+    if (searchdir)
+    {
+        while ((item = readdir(searchdir)) != NULL)
+        {
+            //puts(item->d_name);
+            if (item->d_type == DT_REG)
+            {
+                filelist->push_back(dirname + "/" + string(item->d_name));
+            }
+            else
+                if (item->d_type == DT_DIR && strcmp(item->d_name, ".") != 0 && strcmp(item->d_name, "..") != 0)
+                    fill_file_array(filelist, string(dirname + "/" + string(item->d_name)).c_str());
+
+        }
+        closedir(searchdir);
+    }
+}
+
+StringList sort_file_array(vector<string> filelist)
+{
+    StringList sflist;
+    for(vector<string>::iterator itr = filelist.begin(); itr != filelist.end(); itr++)
+    {
+        string file_ext = itr->substr(itr->find_last_of(".")+1);
+        // make *.MP3 *.mp3 if exists
+        transform(file_ext.begin(), file_ext.end(), file_ext.begin(), ::tolower);
+        sflist.insert(pair<string, string>(file_ext, (*itr)));
+    }
+    return sflist;
+}
+
+void pure_search(const char *dirname)
+{
+    vector<string> filelist;
+    StringList filelist_s;
+    fill_file_array(&filelist, dirname);
+    filelist_s = sort_file_array(filelist);
+
+    for(StringList::iterator itr = filelist_s.lower_bound("mp3"); itr != filelist_s.upper_bound("mp3"); itr++)
+    {
+        cout << "key " << itr->first << " value " <<itr->second << endl;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     bool overwrite = false;
@@ -80,6 +130,9 @@ int main(int argc, char *argv[])
                 break;
         }
     }
+
+    pure_search("/home/adonai/Музыка");
+    return 0;
 
     // connect to Amarok MySQL DB
     MYSQL *connection = DB_connect();
