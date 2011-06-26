@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <iostream>
+#include <getopt.h>
 
 #include <mysql.h>
 
@@ -51,12 +52,33 @@ bool fexist(const char *filename)
 int main(int argc, char *argv[])
 {
     bool overwrite = false;
- //   bool with_amarok = false; //for future use
+    bool with_amarok = false; //for future use
 
-    for (int i = 0; i < argc; i++)
+    int opt;
+    while (1)
     {
-        if((strcmp(argv[i], "-O") == 0) || (strcmp(argv[i], "--overwrite") == 0))
-            overwrite = true;
+        static struct option long_options[] =
+        {
+            /* These options set a flag. */
+            {"with-amarok", no_argument,       0, 'A'},
+            {"overwrite",   no_argument,       0, 'O'},
+            {0, 0, 0, 0}
+        };
+        int opt_index = 0;
+        opt = getopt_long(argc, argv, "AO", long_options, &opt_index);
+
+        if (opt == -1)
+            break;
+
+        switch(opt)
+        {
+            case 'A':
+                with_amarok = true;
+                break;
+            case 'O':
+                overwrite = true;
+                break;
+        }
     }
 
     // connect to Amarok MySQL DB
