@@ -138,8 +138,12 @@ void pure_search(const char *dirname, bool overwrite)
         if(!curr_file.ID3v2Tag())
             continue;
 
+        TagLib::ID3v2::FrameList framelist = curr_file.ID3v2Tag()->frameListMap()["USLT"];
         TagLib::ID3v2::FrameList titles = curr_file.ID3v2Tag()->frameListMap()["TIT2"];
         TagLib::ID3v2::FrameList artists = curr_file.ID3v2Tag()->frameListMap()["TPE1"];
+
+        if(!framelist.isEmpty() && !overwrite)
+            continue;
 
         if(titles.isEmpty() || artists.isEmpty())
             continue;
@@ -161,7 +165,7 @@ void pure_search(const char *dirname, bool overwrite)
             if(exact_text.length() > 5)
             {
                 TagLib::String lyrics_content = TagLib::String(exact_text, TagLib::String::UTF8);
-                TagLib::ID3v2::FrameList framelist = curr_file.ID3v2Tag()->frameListMap()["USLT"];
+
                 if (framelist.isEmpty())
                 {
                     cout << "processing file " << itr->second << " - ";
