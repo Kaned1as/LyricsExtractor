@@ -1,11 +1,13 @@
-#include "config.h"
-
 #include <sys/stat.h>
 #include <dirent.h>
 #include <stdio.h>
-#include <string.h>
 #include <iostream>
 #include <getopt.h>
+
+#include "config.h"
+#include "misc.h"
+
+#include <libxml/HTMLtree.h>
 
 #include <mysql.h>
 
@@ -86,7 +88,41 @@ StringList sort_file_array(vector<string> filelist)
     return sflist;
 }
 
-void pure_search(const char *dirname)
+void FindLyrics(htmlNodePtr element, string *out)
+{
+    for(htmlNodePtr node = element; node != NULL; node = node->next)
+        if(node->type == XML_ELEMENT_NODE)
+        {
+            if(xmlStrcasecmp(node->name, (const xmlChar*)"DIV") == 0)
+                for(xmlAttrPtr attr = node->properties; attr != NULL; attr = attr->next)
+                    if(xmlStrcasecmp(xmlGetProp(node, (const xmlChar*)"class"), (const xmlChar*)"lyricbox") == 0)
+                    {
+                        if(node->children != NULL)
+                        {
+                            for(htmlNodePtr child = node->children; child != NULL; child = child->next)
+                                if(child->content && child->type != HTML_COMMENT_NODE && !(xmlStrcasecmp(child->name, (const xmlChar*)"BR") == 0))
+                                {
+                                    out->append((const char *)child->content);
+                                    printf("%s", child->content);
+                                }
+                                else
+                                {
+                                    out->append("\n");
+                                    printf("\n");
+                                }
+                            return;
+                        }
+                    }
+
+            if(node->children != NULL)
+            {
+                FindLyrics(node->children, out);
+            }
+        }
+}
+
+
+void pure_search(const char *dirname, bool overwrite)
 {
     vector<string> filelist;
     StringList filelist_s;
@@ -95,45 +131,71 @@ void pure_search(const char *dirname)
 
     for(StringList::iterator itr = filelist_s.lower_bound("mp3"); itr != filelist_s.upper_bound("mp3"); itr++)
     {
-        cout << "key " << itr->first << " value " <<itr->second << endl;
+        string httpres, exact_text;
+        TagLib::String lyrics;
+
+        TagLib::MPEG::File curr_file(itr->second.c_str());
+        if(!curr_file.ID3v2Tag())
+            continue;
+
+        TagLib::ID3v2::FrameList titles = curr_file.ID3v2Tag()->frameListMap()["TIT2"];
+        TagLib::ID3v2::FrameList artists = curr_file.ID3v2Tag()->frameListMap()["TPE1"];
+
+        if(titles.isEmpty() || artists.isEmpty())
+            continue;
+
+        TagLib::ID3v2::Frame *title = titles.front();
+        TagLib::ID3v2::Frame *artist = artists.front();
+        string url = "http://lyrics.wikia.com/"+artist->toString().to8Bit(true)+":"+title->toString().to8Bit(true);
+        char *url_c = (char *)url.c_str();
+        strrep(url_c, ' ', '_'); strrep(url_c, '`', '\'');
+        cout << url_c << endl;
+
+        httpres = curl_httpget(url_c);
+        htmlDocPtr doc = htmlReadMemory(httpres.c_str(), httpres.length(), NULL, "UTF8", HTML_PARSE_NOWARNING | HTML_PARSE_NOERROR);
+        if(doc)
+        {
+            htmlNodePtr root_element = xmlDocGetRootElement(doc);
+            FindLyrics(root_element, &exact_text);
+
+            if(exact_text.length() > 5)
+            {
+                TagLib::String lyrics_content = TagLib::String(exact_text, TagLib::String::UTF8);
+                TagLib::ID3v2::FrameList framelist = curr_file.ID3v2Tag()->frameListMap()["USLT"];
+                if (framelist.isEmpty())
+                {
+                    cout << "processing file " << itr->second << " - ";
+                    TagLib::ID3v2::UnsynchronizedLyricsFrame *lyrics_frame = new TagLib::ID3v2::UnsynchronizedLyricsFrame();
+
+                    // KEY LINE!!!
+                    // Making file's ID3 Tag use lyrics from the Amarok DB
+                    lyrics_frame->setTextEncoding(TagLib::String::UTF8);
+                    lyrics_frame->setText(lyrics_content);
+                    curr_file.ID3v2Tag()->addFrame(lyrics_frame);
+                    // Write it in!
+                    curr_file.save();
+                    cout << "Successful update" << endl;
+                }
+                else
+                    if (overwrite) // Delete existing lyrics and set ours...
+                    {
+                        cout << "overwriting tag in file " << itr->second << " - ";
+                        TagLib::ID3v2::UnsynchronizedLyricsFrame *lyrics_frame = (TagLib::ID3v2::UnsynchronizedLyricsFrame*)framelist.front();
+
+                        lyrics_frame->setTextEncoding(TagLib::String::UTF8);
+                        lyrics_frame->setText(lyrics_content);
+                        curr_file.save();
+                        cout << "Successful update" << endl;
+                    }
+                    else
+                        cout << itr->second << " already has lyrics" << endl; // so cute...
+            }
+        }
     }
 }
 
-int main(int argc, char *argv[])
+void amarok_search(bool overwrite)
 {
-    bool overwrite = false;
-    bool with_amarok = false; //for future use
-
-    int opt;
-    while (1)
-    {
-        static struct option long_options[] =
-        {
-            /* These options set a flag. */
-            {"with-amarok", no_argument,       0, 'A'},
-            {"overwrite",   no_argument,       0, 'O'},
-            {0, 0, 0, 0}
-        };
-        int opt_index = 0;
-        opt = getopt_long(argc, argv, "AO", long_options, &opt_index);
-
-        if (opt == -1)
-            break;
-
-        switch(opt)
-        {
-            case 'A':
-                with_amarok = true;
-                break;
-            case 'O':
-                overwrite = true;
-                break;
-        }
-    }
-
-    pure_search("/home/adonai/Музыка");
-    return 0;
-
     // connect to Amarok MySQL DB
     MYSQL *connection = DB_connect();
     MYSQL_RES *result;
@@ -143,7 +205,7 @@ int main(int argc, char *argv[])
     if (connection)
         cout << "Connection succesful" << endl;
     else
-        return -1;
+        return;
 
     // They made me do this <.<
     mysql_query(connection, "SET NAMES utf8");
@@ -151,7 +213,7 @@ int main(int argc, char *argv[])
     if (mysql_query(connection, "SELECT `url`, `lyrics` FROM `lyrics`"))
     {
         cout << mysql_error(connection);
-        return -1;
+        return;
     }
 
     // Do we have one?
@@ -208,5 +270,50 @@ int main(int argc, char *argv[])
 
     // All done, exiting
     mysql_close(connection);
+}
+
+int main(int argc, char *argv[])
+{
+    bool overwrite = false;
+    bool with_amarok = false; //for future use
+
+    int opt;
+    while (1)
+    {
+        static struct option long_options[] =
+        {
+            /* These options set a flag. */
+            {"with-amarok", no_argument,       0, 'A'},
+            {"overwrite",   no_argument,       0, 'O'},
+            {0, 0, 0, 0}
+        };
+        int opt_index = 0;
+        opt = getopt_long(argc, argv, "AO", long_options, &opt_index);
+
+        if (opt == -1)
+            break;
+
+        switch(opt)
+        {
+            case 'A':
+                with_amarok = true;
+                break;
+            case 'O':
+                overwrite = true;
+                break;
+        }
+    }
+
+    if(!with_amarok)
+        for(int i = 0; i < argc; i++)
+        {
+            if(argv[i][0] == '/')
+                pure_search(argv[i], overwrite);
+        }
+    else
+        amarok_search(overwrite);
+
+
+
     return 0;
 }
